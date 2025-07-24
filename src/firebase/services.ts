@@ -59,8 +59,8 @@ export const ordersService = {
           { id: '1', name: 'Butter Chicken', price: 250, quantity: 2, customization: { spiceLevel: 'medium' } }
         ],
         totalAmount: 500,
-        status: 'completed',
-        paymentMethod: 'wallet',
+        status: 'completed' as const,
+        paymentMethod: 'wallet' as const,
         pickupTime: new Date(Date.now() + 30 * 60 * 1000), // 30 minutes from now
         createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000), // 1 day ago
         qrCode: 'demo-qr-code-1'
@@ -74,8 +74,8 @@ export const ordersService = {
           { id: '2', name: 'Paneer Tikka', price: 200, quantity: 1, customization: { spiceLevel: 'mild' } }
         ],
         totalAmount: 200,
-        status: 'pending',
-        paymentMethod: 'wallet',
+        status: 'pending' as const,
+        paymentMethod: 'wallet' as const,
         pickupTime: new Date(Date.now() + 45 * 60 * 1000),
         createdAt: new Date(),
         qrCode: 'demo-qr-code-2'
@@ -210,7 +210,7 @@ export const createRealtimeListener = (collection: string, callback: (data: any[
   return () => clearInterval(interval);
 };
 
-// Interfaces
+// Interfaces - Updated to match actual data structure
 export interface MenuItem {
   id: string;
   name: string;
@@ -219,19 +219,21 @@ export interface MenuItem {
   category: string;
   image: string;
   available: boolean;
+  preparationTime: number;
   stockQuantity: number;
   costPrice: number;
   customizationOptions?: {
-    spiceLevel?: boolean;
-    sugarLevel?: boolean;
+    spiceLevel?: string[];
+    sugarLevel?: string[];
+    portionSize?: string[];
     extras?: string[];
   };
   reviews?: Array<{
-    userId: string;
-    userName: string;
+    id: number;
     rating: number;
     comment: string;
-    date: Date;
+    userName: string;
+    date: string;
   }>;
   averageRating: number;
   totalReviews: number;
@@ -264,51 +266,39 @@ export interface ComboOffer {
   description: string;
   items: Array<{
     id: string;
-    name: string;
-    originalPrice: number;
+    quantity: number;
   }>;
   originalPrice: number;
   discountedPrice: number;
-  active: boolean;
-  validFrom: Date;
-  validTo: Date;
-  maxUses?: number;
-  currentUses: number;
+  validDays: string[];
+  validUntil: string;
+  isActive: boolean;
 }
 
 export interface StaffMember {
   id: string;
   name: string;
   role: string;
-  email: string;
-  phone: string;
-  salary: number;
+  hourlyRate: number;
   attendance: Array<{
     date: string;
     checkIn: string;
     checkOut?: string;
-    status: 'present' | 'absent' | 'late';
+    hours: number;
   }>;
-  monthlySalary: number;
-  totalDays: number;
-  presentDays: number;
 }
 
 export interface CreditAccount {
   id: string;
-  userId: string;
-  userName: string;
+  studentId: string;
+  studentName: string;
   email: string;
   creditLimit: number;
   currentBalance: number;
-  status: 'active' | 'suspended' | 'closed';
   transactions: Array<{
-    id: string;
-    type: 'purchase' | 'payment';
+    date: string;
     amount: number;
+    type: string;
     description: string;
-    date: Date;
   }>;
-  lastPaymentDate?: Date;
-  nextPaymentDue?: Date;
 } 

@@ -1,163 +1,186 @@
-import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Sparkles, Clock, TrendingUp, Heart, Star } from 'lucide-react';
-import { menuItems } from '../lib/sampleData';
+import React, { useState } from 'react';
+import { motion } from 'framer-motion';
+import { 
+  Sparkles, 
+  TrendingUp, 
+  Star, 
+  Heart, 
+  Zap,
+  ArrowRight
+} from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 
 interface Recommendation {
   id: string;
-  type: 'trending' | 'personalized' | 'combo' | 'healthy';
+  type: 'trending' | 'personalized' | 'combo' | 'new';
   title: string;
   description: string;
-  items: any[];
+  items: string[];
   confidence: number;
+  reason: string;
 }
 
-const AIRecommendations: React.FC = () => {
-  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+const AIRecommendations = () => {
   const { addItem } = useCart();
-  const { userData } = useAuth();
+  const { currentUser } = useAuth();
+  const [selectedRecommendation, setSelectedRecommendation] = useState<string | null>(null);
 
-  // Simulate AI recommendations based on user behavior
-  useEffect(() => {
-    const generateRecommendations = () => {
-      const userOrderHistory = JSON.parse(localStorage.getItem('userOrderHistory') || '[]');
-      const popularItems = [...menuItems].sort((a, b) => b.salesCount - a.salesCount);
-      
-      const recs: Recommendation[] = [
-        {
-          id: 'trending-1',
-          type: 'trending',
-          title: '🔥 Trending Now',
-          description: 'Most popular items this week',
-          items: popularItems.slice(0, 3),
-          confidence: 0.95
-        },
-        {
-          id: 'healthy-1',
-          type: 'healthy',
-          title: '🥗 Healthy Choices',
-          description: 'Nutritious options for you',
-          items: menuItems.filter(item => item.category === 'Main Course').slice(0, 2),
-          confidence: 0.87
-        },
-        {
-          id: 'personalized-1',
-          type: 'personalized',
-          title: '✨ Personalized for You',
-          description: 'Based on your preferences',
-          items: menuItems.filter(item => item.averageRating > 4.5).slice(0, 2),
-          confidence: 0.92
-        }
-      ];
+  // Mock AI recommendations
+  const recommendations: Recommendation[] = [
+    {
+      id: '1',
+      type: 'trending',
+      title: '🔥 Trending Now',
+      description: 'Most popular items this week',
+      items: ['Butter Chicken', 'Cold Coffee', 'Masala Dosa'],
+      confidence: 95,
+      reason: 'High ratings and frequent orders'
+    },
+    {
+      id: '2',
+      type: 'personalized',
+      title: '🎯 For You',
+      description: 'Based on your preferences',
+      items: ['Paneer Tikka', 'Masala Chai', 'Samosa'],
+      confidence: 87,
+      reason: 'Similar to items you\'ve ordered before'
+    },
+    {
+      id: '3',
+      type: 'combo',
+      title: '💡 Smart Combo',
+      description: 'Perfect meal combination',
+      items: ['Butter Chicken + Naan + Cold Coffee'],
+      confidence: 92,
+      reason: 'Great value and complementary flavors'
+    },
+    {
+      id: '4',
+      type: 'new',
+      title: '✨ New Arrival',
+      description: 'Fresh additions to our menu',
+      items: ['Biryani', 'Gulab Jamun'],
+      confidence: 78,
+      reason: 'New items with positive initial feedback'
+    }
+  ];
 
-      setRecommendations(recs);
-      setIsLoading(false);
+  const handleAddRecommendation = (recommendation: Recommendation) => {
+    // Add the first item from the recommendation
+    const itemName = recommendation.items[0].split(' + ')[0]; // Handle combo items
+    
+    // Mock item data - in real app, this would fetch from menu
+    const mockItem = {
+      id: `rec-${recommendation.id}`,
+      name: itemName,
+      price: 200,
+      image: 'https://via.placeholder.com/300x200/FF6B6B/FFFFFF?text=Food',
+      customization: {}
     };
 
-    // Simulate AI processing time
-    setTimeout(generateRecommendations, 1500);
-  }, []);
+    addItem(mockItem);
+    setSelectedRecommendation(recommendation.id);
+    
+    // Reset selection after 2 seconds
+    setTimeout(() => setSelectedRecommendation(null), 2000);
+  };
 
-  const getRecommendationIcon = (type: Recommendation['type']) => {
+  const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'trending':
-        return <TrendingUp className="w-5 h-5" />;
-      case 'personalized':
-        return <Sparkles className="w-5 h-5" />;
-      case 'healthy':
-        return <Heart className="w-5 h-5" />;
-      case 'combo':
-        return <Star className="w-5 h-5" />;
+      case 'trending': return <TrendingUp className="w-4 h-4" />;
+      case 'personalized': return <Heart className="w-4 h-4" />;
+      case 'combo': return <Zap className="w-4 h-4" />;
+      case 'new': return <Star className="w-4 h-4" />;
+      default: return <Sparkles className="w-4 h-4" />;
     }
   };
 
-  const getConfidenceColor = (confidence: number) => {
-    if (confidence >= 0.9) return 'text-green-600';
-    if (confidence >= 0.8) return 'text-yellow-600';
-    return 'text-orange-600';
+  const getTypeColor = (type: string) => {
+    switch (type) {
+      case 'trending': return 'bg-orange-100 text-orange-700 border-orange-200';
+      case 'personalized': return 'bg-pink-100 text-pink-700 border-pink-200';
+      case 'combo': return 'bg-purple-100 text-purple-700 border-purple-200';
+      case 'new': return 'bg-green-100 text-green-700 border-green-200';
+      default: return 'bg-blue-100 text-blue-700 border-blue-200';
+    }
   };
 
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        <div className="flex items-center space-x-2">
-          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary-600"></div>
-          <span className="text-gray-600 dark:text-gray-400">AI is analyzing your preferences...</span>
-        </div>
-      </div>
-    );
-  }
+  if (!currentUser) return null;
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center space-x-2 mb-4">
-        <Sparkles className="w-6 h-6 text-primary-600" />
-        <h2 className="text-xl font-bold text-gray-900 dark:text-white">AI Recommendations</h2>
+    <div className="bg-white rounded-xl shadow-sm p-6">
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center space-x-2">
+          <Sparkles className="w-5 h-5 text-primary-600" />
+          <h3 className="text-lg font-semibold text-gray-900">AI Recommendations</h3>
+        </div>
+        <div className="text-sm text-gray-500">Powered by AI</div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <AnimatePresence>
-          {recommendations.map((rec, index) => (
-            <motion.div
-              key={rec.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className="backdrop-blur-md bg-white/80 dark:bg-gray-800/80 border border-gray-200 dark:border-gray-700 rounded-xl p-6 shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
-            >
-              <div className="flex items-center space-x-2 mb-4">
-                {getRecommendationIcon(rec.type)}
-                <h3 className="font-semibold text-gray-900 dark:text-white">{rec.title}</h3>
-                <span className={`text-xs font-medium ${getConfidenceColor(rec.confidence)}`}>
-                  {(rec.confidence * 100).toFixed(0)}% match
-                </span>
+      <div className="space-y-4">
+        {recommendations.map((recommendation) => (
+          <motion.div
+            key={recommendation.id}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            whileHover={{ scale: 1.02 }}
+            className={`relative p-4 rounded-lg border-2 transition-all duration-200 cursor-pointer ${
+              selectedRecommendation === recommendation.id
+                ? 'border-primary-500 bg-primary-50'
+                : 'border-gray-200 hover:border-primary-300'
+            }`}
+            onClick={() => handleAddRecommendation(recommendation)}
+          >
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <div className="flex items-center space-x-2 mb-2">
+                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium border ${getTypeColor(recommendation.type)}`}>
+                    {getTypeIcon(recommendation.type)}
+                    <span className="ml-1">{recommendation.title}</span>
+                  </span>
+                  <span className="text-xs text-gray-500">
+                    {recommendation.confidence}% confidence
+                  </span>
+                </div>
+                
+                <p className="text-sm text-gray-600 mb-2">{recommendation.description}</p>
+                
+                <div className="flex items-center space-x-2 mb-3">
+                  <span className="text-sm font-medium text-gray-900">
+                    {recommendation.items.join(' + ')}
+                  </span>
+                </div>
+                
+                <p className="text-xs text-gray-500 italic">
+                  💡 {recommendation.reason}
+                </p>
               </div>
               
-              <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">{rec.description}</p>
-              
-              <div className="space-y-3">
-                {rec.items.map((item) => (
-                  <motion.div
-                    key={item.id}
-                    whileHover={{ scale: 1.02 }}
-                    className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg"
-                  >
-                    <div className="flex items-center space-x-3">
-                      <img
-                        src={item.image}
-                        alt={item.name}
-                        className="w-10 h-10 rounded-lg object-cover"
-                      />
-                      <div>
-                        <p className="font-medium text-gray-900 dark:text-white text-sm">{item.name}</p>
-                        <div className="flex items-center space-x-1">
-                          <Star className="w-3 h-3 text-yellow-400 fill-current" />
-                          <span className="text-xs text-gray-600 dark:text-gray-400">
-                            {item.averageRating}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-2">
-                      <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                        ₹{item.price}
-                      </span>
-                      <button
-                        onClick={() => addItem(item)}
-                        className="px-3 py-1 bg-primary-600 text-white text-xs rounded-lg hover:bg-primary-700 transition-colors"
-                      >
-                        Add
-                      </button>
-                    </div>
-                  </motion.div>
-                ))}
+              <div className="flex items-center space-x-2">
+                <button className="p-2 rounded-full bg-primary-100 text-primary-600 hover:bg-primary-200 transition-colors">
+                  <ArrowRight className="w-4 h-4" />
+                </button>
               </div>
-            </motion.div>
-          ))}
-        </AnimatePresence>
+            </div>
+            
+            {selectedRecommendation === recommendation.id && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="absolute inset-0 bg-primary-500 bg-opacity-10 rounded-lg flex items-center justify-center"
+              >
+                <div className="text-primary-600 font-medium">Added to cart! 🎉</div>
+              </motion.div>
+            )}
+          </motion.div>
+        ))}
+      </div>
+
+      <div className="mt-6 pt-4 border-t border-gray-200">
+        <p className="text-xs text-gray-500 text-center">
+          Recommendations are personalized based on your order history and preferences
+        </p>
       </div>
     </div>
   );

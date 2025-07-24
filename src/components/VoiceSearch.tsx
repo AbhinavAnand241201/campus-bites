@@ -1,193 +1,174 @@
-import React, { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Mic, MicOff, Search, Volume2, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { Mic, MicOff, X } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 
 interface VoiceSearchProps {
-  onSearch: (query: string) => void;
-  isListening: boolean;
-  setIsListening: (listening: boolean) => void;
+  onClose: () => void;
+  onResult: (text: string) => void;
 }
 
-const VoiceSearch: React.FC<VoiceSearchProps> = ({ onSearch, isListening, setIsListening }) => {
+const VoiceSearch: React.FC<VoiceSearchProps> = ({ onClose, onResult }) => {
+  const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
-  const [isSupported, setIsSupported] = useState(false);
   const { addToast } = useToast();
-  const recognitionRef = useRef<any>(null);
 
   useEffect(() => {
-    // Check if speech recognition is supported
-    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
-      setIsSupported(true);
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      recognitionRef.current = new SpeechRecognition();
-      
-      recognitionRef.current.continuous = false;
-      recognitionRef.current.interimResults = false;
-      recognitionRef.current.lang = 'en-US';
+    let recognition: any = null;
 
-      recognitionRef.current.onresult = (event: any) => {
-        const result = event.results[0][0].transcript;
-        setTranscript(result);
-        onSearch(result);
-        setIsListening(false);
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      recognition = new (window as any).webkitSpeechRecognition() || new (window as any).SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+
+      recognition.onstart = () => {
+        setIsListening(true);
         addToast({
-          type: 'success',
-          title: 'Voice Search Complete',
-          message: `Searching for: "${result}"`
+          type: 'info',
+          title: 'Voice Search Active',
+          message: 'Start speaking to search for food items...'
         });
       };
 
-      recognitionRef.current.onerror = (event: any) => {
+      recognition.onresult = (event: any) => {
+        let finalTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript;
+          }
+        }
+        if (finalTranscript) {
+          setTranscript(finalTranscript);
+        }
+      };
+
+      recognition.onerror = (event: any) => {
         console.error('Speech recognition error:', event.error);
         setIsListening(false);
         addToast({
           type: 'error',
           title: 'Voice Search Error',
-          message: 'Could not recognize speech. Please try again.'
+          message: 'Unable to recognize speech. Please try again.'
         });
       };
 
-      recognitionRef.current.onend = () => {
+      recognition.onend = () => {
         setIsListening(false);
       };
-    }
-  }, [onSearch, setIsListening, addToast]);
-
-  const startListening = () => {
-    if (!isSupported) {
+    } else {
       addToast({
         type: 'error',
-        title: 'Not Supported',
-        message: 'Voice search is not supported in your browser.'
+        title: 'Voice Search Not Supported',
+        message: 'Your browser does not support voice search.'
       });
-      return;
     }
 
-    try {
-      recognitionRef.current?.start();
-      setIsListening(true);
-      setTranscript('');
-      addToast({
-        type: 'info',
-        title: 'Listening...',
-        message: 'Speak now to search for food items'
-      });
-    } catch (error) {
-      console.error('Error starting speech recognition:', error);
+    return () => {
+      if (recognition) {
+        recognition.stop();
+      }
+    };
+  }, [addToast]);
+
+  const startListening = () => {
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const recognition = new (window as any).webkitSpeechRecognition() || new (window as any).SpeechRecognition();
+      recognition.continuous = true;
+      recognition.interimResults = true;
+      recognition.lang = 'en-US';
+      recognition.start();
     }
   };
 
   const stopListening = () => {
-    recognitionRef.current?.stop();
-    setIsListening(false);
+    if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+      const recognition = new (window as any).webkitSpeechRecognition() || new (window as any).SpeechRecognition();
+      recognition.stop();
+    }
   };
 
-  const clearTranscript = () => {
-    setTranscript('');
+  const handleSubmit = () => {
+    if (transcript.trim()) {
+      onResult(transcript.trim());
+    }
   };
-
-  if (!isSupported) {
-    return null;
-  }
 
   return (
-    <div className="relative">
-      <AnimatePresence>
-        {isListening && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            className="absolute -top-16 left-0 right-0 bg-gradient-to-r from-primary-500 to-purple-600 text-white p-4 rounded-lg shadow-lg backdrop-blur-md"
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        className="bg-white dark:bg-gray-800 rounded-xl p-6 max-w-md w-full"
+      >
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+            Voice Search
+          </h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600"
           >
-            <div className="flex items-center justify-between">
-              <div className="flex items-center space-x-3">
-                <motion.div
-                  animate={{ scale: [1, 1.2, 1] }}
-                  transition={{ duration: 1, repeat: Infinity }}
-                >
-                  <Volume2 className="w-6 h-6" />
-                </motion.div>
-                <div>
-                  <p className="font-medium">Listening...</p>
-                  <p className="text-sm opacity-90">Speak to search for food items</p>
-                </div>
-              </div>
-              <button
-                onClick={stopListening}
-                className="p-2 hover:bg-white/20 rounded-lg transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            <X className="w-6 h-6" />
+          </button>
+        </div>
 
-      <div className="flex items-center space-x-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search menu items..."
-            value={transcript}
-            onChange={(e) => setTranscript(e.target.value)}
-            className="w-full pl-10 pr-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent"
-          />
+        <div className="text-center mb-6">
+          <div className={`w-20 h-20 mx-auto mb-4 rounded-full flex items-center justify-center transition-all duration-300 ${
+            isListening 
+              ? 'bg-red-500 animate-pulse' 
+              : 'bg-gray-200 dark:bg-gray-700'
+          }`}>
+            {isListening ? (
+              <MicOff className="w-8 h-8 text-white" />
+            ) : (
+              <Mic className="w-8 h-8 text-gray-600 dark:text-gray-400" />
+            )}
+          </div>
+          
+          <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+            {isListening ? 'Listening... Speak now!' : 'Click the microphone to start'}
+          </p>
+        </div>
+
+        {transcript && (
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              What you said:
+            </label>
+            <div className="p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+              <p className="text-gray-900 dark:text-white">{transcript}</p>
+            </div>
+          </div>
+        )}
+
+        <div className="flex space-x-3">
+          {!isListening ? (
+            <button
+              onClick={startListening}
+              className="flex-1 bg-primary-600 text-white py-2 rounded-lg hover:bg-primary-700 transition-colors"
+            >
+              Start Listening
+            </button>
+          ) : (
+            <button
+              onClick={stopListening}
+              className="flex-1 bg-red-600 text-white py-2 rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Stop Listening
+            </button>
+          )}
+          
           {transcript && (
             <button
-              onClick={clearTranscript}
-              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              onClick={handleSubmit}
+              className="flex-1 bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors"
             >
-              <X className="w-4 h-4" />
+              Search
             </button>
           )}
         </div>
-        
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={isListening ? stopListening : startListening}
-          className={`p-3 rounded-lg transition-all duration-300 ${
-            isListening
-              ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg'
-              : 'bg-primary-600 hover:bg-primary-700 text-white shadow-md hover:shadow-lg'
-          }`}
-        >
-          <AnimatePresence mode="wait">
-            {isListening ? (
-              <motion.div
-                key="listening"
-                initial={{ rotate: 0 }}
-                animate={{ rotate: 360 }}
-                transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-              >
-                <MicOff className="w-5 h-5" />
-              </motion.div>
-            ) : (
-              <motion.div
-                key="not-listening"
-                initial={{ scale: 0 }}
-                animate={{ scale: 1 }}
-                exit={{ scale: 0 }}
-              >
-                <Mic className="w-5 h-5" />
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.button>
-      </div>
-
-      {transcript && (
-        <motion.div
-          initial={{ opacity: 0, y: -10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mt-2 text-sm text-gray-600 dark:text-gray-400"
-        >
-          Voice input: "{transcript}"
-        </motion.div>
-      )}
+      </motion.div>
     </div>
   );
 };
